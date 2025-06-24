@@ -126,9 +126,11 @@ Frontend (with React Testing Library)
 ```
 
 👩‍💻 Author
+
 Sehrish Noor
+
 BS Software Engineering (2nd Year)
+
 Ghulam Ishaq Khan Institute (GIKI)
-Languages: C++, JavaScript, Python
 
 ---
