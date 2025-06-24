@@ -123,8 +123,7 @@ Backend (with Jest or Mocha):
 
 npm test
 Frontend (with React Testing Library)
-
-```bash
+```
 
 👩‍💻 Author
 Sehrish Noor
