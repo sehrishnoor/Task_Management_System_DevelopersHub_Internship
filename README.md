@@ -52,10 +52,6 @@ A full-stack task management application built using **Node.js**, **Express.js**
 ├── styles/
 ├── App.js
 
-yaml
-Copy
-Edit
-
 ---
 
 ## 🚀 Getting Started
@@ -96,13 +92,8 @@ npm install
 touch .env
 Add this to .env:
 
-bash
-Copy
-Edit
 REACT_APP_API_URL=http://localhost:5000/api
-bash
-Copy
-Edit
+
 # Start React app
 npm start
 🧭 Usage Guide
@@ -129,32 +120,11 @@ Use search & filter to find tasks
 
 🧪 Testing
 Backend (with Jest or Mocha):
-bash
-Copy
-Edit
+
 npm test
-Frontend (with React Testing Library):
-bash
-Copy
-Edit
-npm test
-📹 Demo Video
-🎥 Record a walkthrough showing:
+Frontend (with React Testing Library)
 
-CRUD task operations
-
-Responsive UI
-
-Authentication (if implemented)
-
-📅 Submission Instructions
-✅ Push all code to GitHub
-
-✅ Submit GitHub repo link
-
-✅ Submit demo video link
-
-📌 Final Deadline: 26th June, 2025
+```bash
 
 👩‍💻 Author
 Sehrish Noor
@@ -162,21 +132,4 @@ BS Software Engineering (2nd Year)
 Ghulam Ishaq Khan Institute (GIKI)
 Languages: C++, JavaScript, Python
 
-📄 License
-This project is for educational purposes. MIT-style license can be added if required.
-
-yaml
-Copy
-Edit
-
 ---
-
-You can now copy this content into your project as `README.md` for GitHub. Let me know if you'd like a live preview version or help deploying this to GitHub!
-
-
-
-
-
-
-
-
