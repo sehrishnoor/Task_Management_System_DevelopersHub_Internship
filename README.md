@@ -103,7 +103,7 @@ root/
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/your-username/task-management-system.git
+git clone https://github.com/sehrishnoor/task-management-system.git
 cd task-management-system
 ```
 
