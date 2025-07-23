@@ -1,0 +1,176 @@
+// === server.js (updated for Socket.IO) ===
+const express = require('express');
+const mongoose = require('mongoose');
+const cors = require('cors');
+const http = require('http');
+const socketIo = require('socket.io');
+const taskRoutes = require('./routes/tasks');
+const authRoutes = require('./routes/auth');
+const analyticsRoutes = require('./routes/analytics');
+const notificationRoutes = require('./routes/notifications');
+const { errorHandler } = require('./middleware/errorHandler');
+require('dotenv').config();
+
+const app = express();
+const server = http.createServer(app);
+const io = socketIo(server, { cors: { origin: '*' } });
+
+// Socket.IO middleware
+app.set('io', io);
+io.on('connection', socket => {
+  console.log('User connected:', socket.id);
+});
+
+// Middleware
+app.use(cors());
+app.use(express.json());
+
+// Routes
+app.use('/api/tasks', taskRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use(errorHandler);
+
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/taskmanagement', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => {
+  console.log('MongoDB connected');
+  const PORT = process.env.PORT || 5000;
+  server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+})
+.catch(err => console.error('MongoDB error:', err));
+
+
+// === models/Task.js (collaboration + attachment support) ===
+const mongoose = require('mongoose');
+
+const TaskSchema = new mongoose.Schema({
+  title: { type: String, required: true },
+  description: String,
+  status: { type: String, enum: ['Pending', 'In Progress', 'Completed'], default: 'Pending' },
+  dueDate: Date,
+  owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  sharedWith: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  attachments: [{ name: String, url: String }],
+}, { timestamps: true });
+
+module.exports = mongoose.model('Task', TaskSchema);
+
+
+// === routes/tasks.js (new endpoints: share, shared list) ===
+const express = require('express');
+const router = express.Router();
+const Task = require('../models/Task');
+const { authMiddleware } = require('../middleware/auth');
+
+// Share task
+router.put('/:id/share', authMiddleware, async (req, res) => {
+  const { id } = req.params;
+  const { userIdToShare } = req.body;
+  try {
+    const task = await Task.findById(id);
+    if (!task.owner.equals(req.user._id)) return res.status(403).json({ msg: 'Forbidden' });
+    if (!task.sharedWith.includes(userIdToShare)) {
+      task.sharedWith.push(userIdToShare);
+      await task.save();
+
+      // Send real-time notification
+      const io = req.app.get('io');
+      io.emit(`notify:${userIdToShare}`, { message: `A task titled "${task.title}" was shared with you.` });
+    }
+    res.json(task);
+  } catch (err) {
+    res.status(500).json({ msg: 'Error sharing task' });
+  }
+});
+
+// Get shared tasks
+router.get('/shared', authMiddleware, async (req, res) => {
+  try {
+    const sharedTasks = await Task.find({ sharedWith: req.user._id });
+    res.json(sharedTasks);
+  } catch (err) {
+    res.status(500).json({ msg: 'Error fetching shared tasks' });
+  }
+});
+
+module.exports = router;
+
+
+// === routes/analytics.js ===
+const express = require('express');
+const router = express.Router();
+const Task = require('../models/Task');
+const { authMiddleware } = require('../middleware/auth');
+
+// Overview analytics
+router.get('/overview', authMiddleware, async (req, res) => {
+  try {
+    const data = await Task.aggregate([
+      { $match: { owner: req.user._id } },
+      { $group: { _id: '$status', count: { $sum: 1 } } }
+    ]);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ msg: 'Analytics error' });
+  }
+});
+
+// Trends (example for weekly trends)
+router.get('/trends', authMiddleware, async (req, res) => {
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+  try {
+    const data = await Task.aggregate([
+      { $match: { owner: req.user._id, createdAt: { $gte: sevenDaysAgo } } },
+      {
+        $group: {
+          _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+          created: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+    res.json(data);
+  } catch (err) {
+    res.status(500).json({ msg: 'Trend error' });
+  }
+});
+
+module.exports = router;
+
+
+// === middleware/auth.js ===
+const jwt = require('jsonwebtoken');
+const User = require('../models/User');
+
+const authMiddleware = async (req, res, next) => {
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ msg: 'No token provided' });
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = await User.findById(decoded.id);
+    if (!req.user) throw new Error();
+    next();
+  } catch (err) {
+    res.status(401).json({ msg: 'Invalid token' });
+  }
+};
+
+module.exports = { authMiddleware };
+
+
+// === frontend/socket.js (React side Socket.IO listener) ===
+import { io } from 'socket.io-client';
+const socket = io('http://localhost:5000');
+
+export const listenForNotifications = (userId, callback) => {
+  socket.on(`notify:${userId}`, callback);
+};
+
+// Call this in useEffect in your App.js to show real-time notifications.
