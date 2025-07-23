@@ -12,7 +12,6 @@ root/
 ├── server/        # Node.js backend (Express.js, MongoDB)
 └── README.md
 ```
-
 ---
 
 ## 🚀 Features
